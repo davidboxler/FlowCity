@@ -5,35 +5,31 @@ using UnityEngine.UI;
 // ============================================================================
 //  GAME MANAGER — FlowCity (examen de manejo por reacción)
 //  ----------------------------------------------------------------------------
-//  Flujo del examen:
-//    1) Toma 15 preguntas al azar de las 50.
-//    2) Muestra la señal + pregunta + 2 opciones.
-//    3) El jugador tiene N segundos para elegir (mide el tiempo de reacción).
-//    4) Si acierta suma; si falla o se acaba el tiempo, no.
-//    5) Al terminar las 15, muestra resultado + reacción promedio.
+//  Flujo: toma 15 preguntas al azar de 50, muestra el obstáculo + pregunta +
+//  2 respuestas (que CAMBIAN de lado izq/der), da N segundos, mide reacción,
+//  feedback verde/rojo, y al final aprobado/desaprobado + reacción promedio.
 //
-//  El "auto en primera persona" es visual: una velocidad que sube/baja según
-//  las respuestas, mostrada en el HUD. (Por ahora simple, como pidió David.)
+//  La "velocidad" sube lento y no pasa de 60 (estética de juego de carreras).
 // ============================================================================
 public class GameManager : MonoBehaviour
 {
     [Header("Configuración del examen")]
-    [SerializeField] public int cantidadPreguntas = 15;     // cuántas preguntas trae el examen
-    [SerializeField] public float segundosPorPregunta = 3f; // tiempo para responder cada una
+    [SerializeField] public int cantidadPreguntas = 15;
+    [SerializeField] public float segundosPorPregunta = 3f;
 
-    [Header("Referencias de UI (las conecta el constructor de escena)")]
+    [Header("UI de pregunta")]
     [SerializeField] private Text textoPregunta;
-    [SerializeField] private Text textoOpcionA;
-    [SerializeField] private Text textoOpcionB;
-    [SerializeField] private Button botonA;
-    [SerializeField] private Button botonB;
-    [SerializeField] private Image barraTiempo;     // se vacía mientras corre el tiempo
-    [SerializeField] private Text textoProgreso;    // "Pregunta 3 / 15"
-    [SerializeField] private SignDrawer signDrawer;
+    [SerializeField] private Text textoOpcionIzq;
+    [SerializeField] private Text textoOpcionDer;
+    [SerializeField] private Button botonIzq;
+    [SerializeField] private Button botonDer;
+    [SerializeField] private Image barraTiempo;
+    [SerializeField] private Text textoProgreso;
+    [SerializeField] private ObstacleView obstaculo;
 
-    [Header("HUD de velocidad (primera persona)")]
+    [Header("HUD de velocidad")]
     [SerializeField] private Text textoVelocidad;
-    [SerializeField] private Image velocidadFill;   // barra/aguja de velocidad
+    [SerializeField] private Image velocidadFill;
 
     [Header("Pantallas")]
     [SerializeField] private GameObject panelJuego;
@@ -41,10 +37,14 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Text textoResultado;
     [SerializeField] private Button botonReiniciar;
 
-    [Header("Feedback visual")]
-    [SerializeField] private Image flashColor;       // verde/rojo al responder
+    [Header("Feedback")]
+    [SerializeField] private Image flashColor;
 
-    // --- Estado interno ---
+    // Velocidad estética
+    private const float VEL_MAX = 60f;
+    private float velocidad = 20f;
+
+    // Estado
     private List<Pregunta> examen = new List<Pregunta>();
     private int indiceActual = 0;
     private int aciertos = 0;
@@ -53,24 +53,19 @@ public class GameManager : MonoBehaviour
     private float tiempoInicioPregunta;
     private List<float> tiemposReaccion = new List<float>();
 
-    // --- Velocidad simulada (HUD primera persona) ---
-    private float velocidad = 40f;
-    private const float VEL_MAX = 120f;
-    private const float VEL_MIN = 0f;
+    // ¿En qué lado está la opción A de la pregunta? (para saber qué botón es correcto)
+    private bool opcionAenIzquierda = true;
 
     void Start()
     {
-        // Conectar los botones por código (a prueba de desconexiones).
-        if (botonA != null) botonA.onClick.AddListener(() => Responder(0));
-        if (botonB != null) botonB.onClick.AddListener(() => Responder(1));
+        if (botonIzq != null) botonIzq.onClick.AddListener(() => ResponderLado(true));
+        if (botonDer != null) botonDer.onClick.AddListener(() => ResponderLado(false));
         if (botonReiniciar != null) botonReiniciar.onClick.AddListener(IniciarExamen);
-
         IniciarExamen();
     }
 
     public void IniciarExamen()
     {
-        // Elegir N preguntas al azar de todas.
         List<Pregunta> todas = PreguntasDB.ObtenerTodas();
         Barajar(todas);
         examen.Clear();
@@ -79,7 +74,7 @@ public class GameManager : MonoBehaviour
 
         indiceActual = 0;
         aciertos = 0;
-        velocidad = 40f;
+        velocidad = 20f;
         tiemposReaccion.Clear();
 
         if (panelFinal != null) panelFinal.SetActive(false);
@@ -90,19 +85,26 @@ public class GameManager : MonoBehaviour
 
     void MostrarPregunta()
     {
-        if (indiceActual >= examen.Count)
-        {
-            TerminarExamen();
-            return;
-        }
+        if (indiceActual >= examen.Count) { TerminarExamen(); return; }
 
         Pregunta p = examen[indiceActual];
 
+        // Elegir al azar de qué lado va la opción A (así la correcta varía de lado).
+        opcionAenIzquierda = Random.value < 0.5f;
+        if (opcionAenIzquierda)
+        {
+            if (textoOpcionIzq != null) textoOpcionIzq.text = p.opcionA;
+            if (textoOpcionDer != null) textoOpcionDer.text = p.opcionB;
+        }
+        else
+        {
+            if (textoOpcionIzq != null) textoOpcionIzq.text = p.opcionB;
+            if (textoOpcionDer != null) textoOpcionDer.text = p.opcionA;
+        }
+
         if (textoPregunta != null) textoPregunta.text = p.enunciado;
-        if (textoOpcionA != null) textoOpcionA.text = p.opcionA;
-        if (textoOpcionB != null) textoOpcionB.text = p.opcionB;
         if (textoProgreso != null) textoProgreso.text = "Pregunta " + (indiceActual + 1) + " / " + examen.Count;
-        if (signDrawer != null) signDrawer.Dibujar(p.iconoTipo);
+        if (obstaculo != null) obstaculo.Mostrar(p.iconoTipo);
 
         tiempoRestante = segundosPorPregunta;
         tiempoInicioPregunta = Time.time;
@@ -112,9 +114,7 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
-        // Suavizar la aguja de velocidad hacia su valor objetivo.
         ActualizarHUDVelocidad();
-
         if (!esperandoRespuesta) return;
 
         tiempoRestante -= Time.deltaTime;
@@ -123,42 +123,44 @@ public class GameManager : MonoBehaviour
 
         if (tiempoRestante <= 0f)
         {
-            // Se acabó el tiempo => cuenta como error (no reaccionó a tiempo).
             esperandoRespuesta = false;
             SetBotones(false);
-            velocidad = Mathf.Max(VEL_MIN, velocidad - 15f); // pierde velocidad por no reaccionar
+            tiemposReaccion.Add(segundosPorPregunta);
             Flash(false);
-            tiemposReaccion.Add(segundosPorPregunta); // reacción = tiempo máximo
-            Invoke(nameof(Siguiente), 0.6f);
+            Invoke(nameof(Siguiente), 0.7f);
         }
     }
 
-    void Responder(int opcion)
+    // El jugador tocó un lado. Traducimos lado -> opción (A o B) -> correcto o no.
+    void ResponderLado(bool tocoIzquierda)
     {
         if (!esperandoRespuesta) return;
-
         esperandoRespuesta = false;
         SetBotones(false);
 
         float reaccion = Time.time - tiempoInicioPregunta;
         tiemposReaccion.Add(reaccion);
 
-        Pregunta p = examen[indiceActual];
-        bool correcto = (opcion == p.correcta);
+        // ¿Qué opción (0=A,1=B) representa el lado tocado?
+        int opcionElegida;
+        if (tocoIzquierda) opcionElegida = opcionAenIzquierda ? 0 : 1;
+        else               opcionElegida = opcionAenIzquierda ? 1 : 0;
+
+        bool correcto = (opcionElegida == examen[indiceActual].correcta);
 
         if (correcto)
         {
             aciertos++;
-            velocidad = Mathf.Min(VEL_MAX, velocidad + 10f); // acelera al acertar
+            velocidad = Mathf.Min(VEL_MAX, velocidad + 6f); // sube lento
             Flash(true);
         }
         else
         {
-            velocidad = Mathf.Max(VEL_MIN, velocidad - 20f); // frena al fallar
+            velocidad = Mathf.Max(0f, velocidad - 10f);
             Flash(false);
         }
 
-        Invoke(nameof(Siguiente), 0.6f);
+        Invoke(nameof(Siguiente), 0.7f);
     }
 
     void Siguiente()
@@ -177,41 +179,41 @@ public class GameManager : MonoBehaviour
         foreach (float t in tiemposReaccion) promedio += t;
         if (tiemposReaccion.Count > 0) promedio /= tiemposReaccion.Count;
 
-        bool aprobado = aciertos >= Mathf.CeilToInt(examen.Count * 0.6f); // 60% para aprobar
+        bool aprobado = aciertos >= Mathf.CeilToInt(examen.Count * 0.6f);
 
         if (textoResultado != null)
         {
-            string estado = aprobado ? "APROBADO ✅" : "DESAPROBADO ❌";
+            string estado = aprobado ? "APROBADO" : "DESAPROBADO";
             textoResultado.text =
                 estado + "\n\n" +
                 "Respuestas correctas: " + aciertos + " / " + examen.Count + "\n" +
-                "Tiempo de reacción promedio: " + promedio.ToString("F2") + " s";
+                "Tiempo de reaccion promedio: " + promedio.ToString("F2") + " s";
         }
     }
 
     // ---------- Helpers ----------
-
     void SetBotones(bool activos)
     {
-        if (botonA != null) botonA.interactable = activos;
-        if (botonB != null) botonB.interactable = activos;
+        if (botonIzq != null) botonIzq.interactable = activos;
+        if (botonDer != null) botonDer.interactable = activos;
     }
 
     void ActualizarHUDVelocidad()
     {
+        // sube suavemente hacia su valor (efecto velocímetro)
         if (textoVelocidad != null)
             textoVelocidad.text = Mathf.RoundToInt(velocidad) + " km/h";
         if (velocidadFill != null)
-            velocidadFill.fillAmount = Mathf.Lerp(velocidadFill.fillAmount, velocidad / VEL_MAX, Time.deltaTime * 5f);
+            velocidadFill.fillAmount = Mathf.Lerp(velocidadFill.fillAmount, velocidad / VEL_MAX, Time.deltaTime * 4f);
     }
 
     void Flash(bool acierto)
     {
         if (flashColor == null) return;
-        Color c = acierto ? new Color(0.15f, 0.8f, 0.3f, 0.45f) : new Color(0.9f, 0.2f, 0.2f, 0.45f);
-        flashColor.color = c;
+        flashColor.color = acierto ? new Color(0.15f, 0.8f, 0.3f, 0.5f)
+                                   : new Color(0.9f, 0.2f, 0.2f, 0.5f);
         CancelInvoke(nameof(ApagarFlash));
-        Invoke(nameof(ApagarFlash), 0.4f);
+        Invoke(nameof(ApagarFlash), 0.5f);
     }
 
     void ApagarFlash()
@@ -224,9 +226,7 @@ public class GameManager : MonoBehaviour
         for (int i = lista.Count - 1; i > 0; i--)
         {
             int j = Random.Range(0, i + 1);
-            Pregunta tmp = lista[i];
-            lista[i] = lista[j];
-            lista[j] = tmp;
+            var tmp = lista[i]; lista[i] = lista[j]; lista[j] = tmp;
         }
     }
 }
