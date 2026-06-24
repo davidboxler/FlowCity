@@ -4,6 +4,15 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/MenuPrincipal.unity
+    guid: a147fccf036c9f94d9015796b36a46ee
+  - enabled: 1
+    path: Assets/Scenes/SeleccionVehiculo.unity
+    guid: 7a861419522edf546a6fabb7967c4ed5
+  - enabled: 1
+    path: Assets/Scenes/FlowCity.unity
+    guid: 174d52dd768704f4ab9106de0c4d00d5
   m_configObjects: {}
   m_UseUCBPForAssetBundles: 0

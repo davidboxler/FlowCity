@@ -5,9 +5,12 @@ using UnityEngine.UI;
 // ============================================================================
 //  GAME MANAGER — FlowCity (examen de manejo por reacción)
 //  ----------------------------------------------------------------------------
-//  Flujo: toma 15 preguntas al azar de 50, muestra el obstáculo + pregunta +
-//  2 respuestas (que CAMBIAN de lado izq/der), da N segundos, mide reacción,
-//  feedback verde/rojo, y al final aprobado/desaprobado + reacción promedio.
+//  FLUJO EN 2 FASES por cada pregunta:
+//    FASE SEÑAL (pantalla completa, ~5s): se ve la señal grande + la pregunta +
+//        una cuenta regresiva. El jugador la memoriza.
+//    FASE RESPUESTA (ciudad, ~3s): desaparece la señal, aparece la ciudad con el
+//        vehículo elegido (auto/moto) y SOLO los 2 botones. Hay que responder de
+//        memoria. Se mide la reacción.
 //
 //  La "velocidad" sube lento y no pasa de 60 (estética de juego de carreras).
 // ============================================================================
@@ -15,17 +18,26 @@ public class GameManager : MonoBehaviour
 {
     [Header("Configuración del examen")]
     [SerializeField] public int cantidadPreguntas = 15;
-    [SerializeField] public float segundosPorPregunta = 3f;
+    [SerializeField] public float segundosPorPregunta = 3f;   // tiempo para responder
+    [SerializeField] public float segundosSenal = 5f;         // tiempo para memorizar la señal
 
-    [Header("UI de pregunta")]
-    [SerializeField] private Text textoPregunta;
+    [Header("Fase SEÑAL (pantalla completa)")]
+    [SerializeField] private GameObject panelSenal;
+    [SerializeField] private ObstacleView obstaculoSenal;
+    [SerializeField] private Text textoPreguntaSenal;
+    [SerializeField] private Text textoCuenta;
+    [SerializeField] private Text textoProgreso;
+
+    [Header("Fase RESPUESTA")]
     [SerializeField] private Text textoOpcionIzq;
     [SerializeField] private Text textoOpcionDer;
     [SerializeField] private Button botonIzq;
     [SerializeField] private Button botonDer;
     [SerializeField] private Image barraTiempo;
-    [SerializeField] private Text textoProgreso;
-    [SerializeField] private ObstacleView obstaculo;
+
+    [Header("Vehículos (se activa el elegido en el menú)")]
+    [SerializeField] private GameObject vehiculoAuto;
+    [SerializeField] private GameObject vehiculoMoto;
 
     [Header("HUD de velocidad")]
     [SerializeField] private Text textoVelocidad;
@@ -44,12 +56,16 @@ public class GameManager : MonoBehaviour
     private const float VEL_MAX = 60f;
     private float velocidad = 20f;
 
+    // Fases del ciclo de una pregunta
+    private enum Fase { Senal, Respuesta, Espera }
+    private Fase fase = Fase.Espera;
+    private float tiempoFase;       // cronómetro de la fase señal
+    private float tiempoRestante;   // cronómetro de la fase respuesta
+
     // Estado
     private List<Pregunta> examen = new List<Pregunta>();
     private int indiceActual = 0;
     private int aciertos = 0;
-    private float tiempoRestante;
-    private bool esperandoRespuesta = false;
     private float tiempoInicioPregunta;
     private List<float> tiemposReaccion = new List<float>();
 
@@ -61,6 +77,12 @@ public class GameManager : MonoBehaviour
         if (botonIzq != null) botonIzq.onClick.AddListener(() => ResponderLado(true));
         if (botonDer != null) botonDer.onClick.AddListener(() => ResponderLado(false));
         if (botonReiniciar != null) botonReiniciar.onClick.AddListener(IniciarExamen);
+
+        // Mostrar el vehículo elegido en el menú (auto o moto)
+        bool esMoto = SeleccionExamen.ExamenElegido == TipoExamen.Moto;
+        if (vehiculoAuto != null) vehiculoAuto.SetActive(!esMoto);
+        if (vehiculoMoto != null) vehiculoMoto.SetActive(esMoto);
+
         IniciarExamen();
     }
 
@@ -83,6 +105,7 @@ public class GameManager : MonoBehaviour
         MostrarPregunta();
     }
 
+    // ----- FASE SEÑAL: pantalla completa con la señal + pregunta + cuenta regresiva -----
     void MostrarPregunta()
     {
         if (indiceActual >= examen.Count) { TerminarExamen(); return; }
@@ -102,20 +125,46 @@ public class GameManager : MonoBehaviour
             if (textoOpcionDer != null) textoOpcionDer.text = p.opcionA;
         }
 
-        if (textoPregunta != null) textoPregunta.text = p.enunciado;
-        if (textoProgreso != null) textoProgreso.text = "Pregunta " + (indiceActual + 1) + " / " + examen.Count;
-        if (obstaculo != null) obstaculo.Mostrar(p.iconoTipo);
+        // Activar el panel ANTES de dibujar (así el ObstacleView ya corrió su Awake).
+        if (panelSenal != null) panelSenal.SetActive(true);
 
+        if (textoPreguntaSenal != null) textoPreguntaSenal.text = p.enunciado;
+        if (textoProgreso != null) textoProgreso.text = "Pregunta " + (indiceActual + 1) + " / " + examen.Count;
+        if (obstaculoSenal != null) obstaculoSenal.Mostrar(p.iconoTipo);
+
+        SetBotones(false);
+
+        fase = Fase.Senal;
+        tiempoFase = segundosSenal;
+        if (textoCuenta != null) textoCuenta.text = Mathf.CeilToInt(segundosSenal).ToString();
+    }
+
+    // ----- FASE RESPUESTA: se va la señal, aparece la ciudad y los botones -----
+    void IniciarRespuesta()
+    {
+        if (panelSenal != null) panelSenal.SetActive(false);
+
+        fase = Fase.Respuesta;
         tiempoRestante = segundosPorPregunta;
         tiempoInicioPregunta = Time.time;
-        esperandoRespuesta = true;
+        if (barraTiempo != null) barraTiempo.fillAmount = 1f;
         SetBotones(true);
     }
 
     void Update()
     {
         ActualizarHUDVelocidad();
-        if (!esperandoRespuesta) return;
+
+        if (fase == Fase.Senal)
+        {
+            tiempoFase -= Time.deltaTime;
+            if (textoCuenta != null)
+                textoCuenta.text = Mathf.Clamp(Mathf.CeilToInt(tiempoFase), 1, 99).ToString();
+            if (tiempoFase <= 0f) IniciarRespuesta();
+            return;
+        }
+
+        if (fase != Fase.Respuesta) return;
 
         tiempoRestante -= Time.deltaTime;
         if (barraTiempo != null)
@@ -123,7 +172,7 @@ public class GameManager : MonoBehaviour
 
         if (tiempoRestante <= 0f)
         {
-            esperandoRespuesta = false;
+            fase = Fase.Espera;
             SetBotones(false);
             tiemposReaccion.Add(segundosPorPregunta);
             Flash(false);
@@ -134,8 +183,8 @@ public class GameManager : MonoBehaviour
     // El jugador tocó un lado. Traducimos lado -> opción (A o B) -> correcto o no.
     void ResponderLado(bool tocoIzquierda)
     {
-        if (!esperandoRespuesta) return;
-        esperandoRespuesta = false;
+        if (fase != Fase.Respuesta) return;
+        fase = Fase.Espera;
         SetBotones(false);
 
         float reaccion = Time.time - tiempoInicioPregunta;
@@ -171,7 +220,8 @@ public class GameManager : MonoBehaviour
 
     void TerminarExamen()
     {
-        esperandoRespuesta = false;
+        fase = Fase.Espera;
+        if (panelSenal != null) panelSenal.SetActive(false);
         if (panelJuego != null) panelJuego.SetActive(false);
         if (panelFinal != null) panelFinal.SetActive(true);
 
