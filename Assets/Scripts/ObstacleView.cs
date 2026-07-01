@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 // ============================================================================
 //  OBSTACLE VIEW — dibuja la señal/situación frente al auto CON FIGURAS REALES
@@ -514,23 +515,20 @@ public class ObstacleView : MonoBehaviour
         return go;
     }
 
-    Text Etiqueta(Transform parent, string texto, int tam, Color color)
+    TMP_Text Etiqueta(Transform parent, string texto, int tam, Color color)
     {
         var go = new GameObject("Texto");
         go.transform.SetParent(parent, false);
         var rt = go.AddComponent<RectTransform>();
         rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
         rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
-        var t = go.AddComponent<Text>();
+        var t = go.AddComponent<TextMeshProUGUI>();
         t.text = texto;
-        t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        if (t.font == null) t.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        if (TMP_Settings.defaultFontAsset != null) t.font = TMP_Settings.defaultFontAsset;
         t.fontSize = tam;
-        t.fontStyle = FontStyle.Bold;
-        t.alignment = TextAnchor.MiddleCenter;
+        t.fontStyle = FontStyles.Bold;
+        t.alignment = TextAlignmentOptions.Center;
         t.color = color;
-        t.horizontalOverflow = HorizontalWrapMode.Overflow;
-        t.verticalOverflow = VerticalWrapMode.Overflow;
         return t;
     }
 }

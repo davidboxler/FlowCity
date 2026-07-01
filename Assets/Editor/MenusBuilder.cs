@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
+using TMPro;
 
 // ============================================================================
 //  MENUS BUILDER (Editor) — FlowCity
@@ -20,14 +21,14 @@ using UnityEditor.SceneManagement;
 // ============================================================================
 public static class MenusBuilder
 {
-    // Paleta institucional
-    static Color FONDO   = Hex("#0E1B2A");  // azul muy oscuro
-    static Color FONDO2  = Hex("#14283D");  // panel
-    static Color ACENTO  = Hex("#2E86C1");  // azul institucional
-    static Color ACENTO2 = Hex("#27AE60");  // verde acción
-    static Color MOTO    = Hex("#E67E22");  // naranja moto
-    static Color TXT     = Hex("#ECF0F1");  // texto claro
-    static Color TXTGRIS = Hex("#8FA3B0");
+    // Paleta unificada (lee del tema central FlowTheme)
+    static Color FONDO   = FlowTheme.BG0;     // fondo profundo
+    static Color FONDO2  = FlowTheme.BG1;     // panel / superficie
+    static Color ACENTO  = FlowTheme.PRIMARY; // azul acción
+    static Color ACENTO2 = FlowTheme.SUCCESS; // verde acción (CTA)
+    static Color MOTO    = FlowTheme.MOTO;    // naranja moto
+    static Color TXT     = FlowTheme.TXT_HI;  // texto claro
+    static Color TXTGRIS = FlowTheme.TXT_MD;
 
     // ---------------- MENÚ PRINCIPAL ----------------
     [MenuItem("FlowCity/Construir Menú Principal")]
@@ -36,8 +37,8 @@ public static class MenusBuilder
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         var canvas = BaseEscena(out var ctrl);
 
-        // Fondo
-        var fondo = Panel(canvas, "Fondo", FONDO); Stretch(fondo);
+        // Fondo con gradiente (más claro arriba, profundo abajo) para dar profundidad
+        var fondo = FondoGradiente(canvas);
         // Banda superior (institucional)
         var banda = Panel(canvas, "BandaSuperior", ACENTO);
         Anchor(banda, new Vector2(0, 0.92f), new Vector2(1, 1f));
@@ -69,7 +70,7 @@ public static class MenusBuilder
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         var canvas = BaseEscena(out var ctrl);
 
-        var fondo = Panel(canvas, "Fondo", FONDO); Stretch(fondo);
+        var fondo = FondoGradiente(canvas);
         var banda = Panel(canvas, "BandaSuperior", ACENTO);
         Anchor(banda, new Vector2(0, 0.92f), new Vector2(1, 1f));
         Stretch(Texto(banda.transform, "Inst", "INSTITUTO DE FORMACIÓN VIAL", 22, TextAnchor.MiddleCenter, TXT).gameObject);
@@ -135,15 +136,19 @@ public static class MenusBuilder
         rt.anchorMin = anchor; rt.anchorMax = anchor; rt.pivot = new Vector2(0.5f, 0.5f);
         rt.anchoredPosition = Vector2.zero; rt.sizeDelta = new Vector2(440, 460);
         var img = go.AddComponent<Image>(); img.color = FONDO2;
+        Redondear(go, FlowTheme.R_TARJETA);               // tarjeta redondeada
+        SombraSuave(go, new Vector2(0, -8), 0.40f);       // flota sobre el fondo
         var btn = go.AddComponent<Button>();
         var cols = btn.colors;
-        cols.highlightedColor = Hex("#1F3B57"); cols.pressedColor = Hex("#0B1622");
+        cols.highlightedColor = FlowTheme.BG2; cols.pressedColor = FlowTheme.Mul(FlowTheme.BG1, 0.8f);
+        cols.fadeDuration = 0.08f;
         btn.colors = cols;
         CablearBoton(btn, ctrl, metodo);
 
-        // borde de color arriba (acento del vehículo)
+        // barra de acento del vehículo arriba (redondeada, integrada a la tarjeta)
         var top = Panel(go.transform, "Top", color);
-        AnchorPos(top, new Vector2(0.5f, 1f), new Vector2(0, -10), new Vector2(440, 20));
+        Redondear(top, 8);
+        AnchorPos(top, new Vector2(0.5f, 1f), new Vector2(0, -26), new Vector2(360, 10));
 
         // dibujo del vehículo con figuras (auto o moto, simple)
         var dibujo = new GameObject("Dibujo");
@@ -193,10 +198,13 @@ public static class MenusBuilder
         rt.anchorMin = anchor; rt.anchorMax = anchor; rt.pivot = new Vector2(0.5f, 0.5f);
         rt.anchoredPosition = Vector2.zero; rt.sizeDelta = size;
         var img = go.AddComponent<Image>(); img.color = color;
+        Redondear(go, FlowTheme.R_BOTON);                 // esquinas redondeadas
+        SombraSuave(go, new Vector2(0, -5), 0.30f);       // profundidad
         var btn = go.AddComponent<Button>();
         var cols = btn.colors;
-        cols.highlightedColor = new Color(Mathf.Min(1,color.r*1.25f), Mathf.Min(1,color.g*1.25f), Mathf.Min(1,color.b*1.25f),1f);
-        cols.pressedColor = new Color(color.r*0.8f, color.g*0.8f, color.b*0.8f,1f);
+        cols.highlightedColor = FlowTheme.Mul(color, 1.15f);
+        cols.pressedColor     = FlowTheme.Mul(color, 0.85f);
+        cols.fadeDuration = 0.08f;
         btn.colors = cols;
         CablearBoton(btn, ctrl, metodo);
         var txt = Texto(go.transform, "Texto", label, fontSize, TextAnchor.MiddleCenter, TXT);
@@ -220,16 +228,62 @@ public static class MenusBuilder
         return go;
     }
 
-    static Text Texto(Transform parent, string nombre, string contenido, int tam, TextAnchor anchor, Color color)
+    static TextMeshProUGUI Texto(Transform parent, string nombre, string contenido, int tam, TextAnchor anchor, Color color)
     {
         var go = new GameObject(nombre);
         go.transform.SetParent(parent, false);
         go.AddComponent<RectTransform>();
-        var t = go.AddComponent<Text>();
-        t.text = contenido; t.font = Font(); t.fontSize = tam; t.fontStyle = FontStyle.Bold;
-        t.alignment = anchor; t.color = color;
-        t.horizontalOverflow = HorizontalWrapMode.Wrap; t.verticalOverflow = VerticalWrapMode.Overflow;
+        var t = go.AddComponent<TextMeshProUGUI>();
+        t.text = contenido;
+        if (TMP_Settings.defaultFontAsset != null) t.font = TMP_Settings.defaultFontAsset;
+        t.fontSize = tam; t.fontStyle = FontStyles.Bold;
+        t.alignment = Alinear(anchor); t.color = color;
         return t;
+    }
+
+    // ----- helpers de estilo moderno -----
+
+    // Fondo a pantalla completa con gradiente vertical (profundo abajo, claro arriba).
+    static GameObject FondoGradiente(Transform canvas)
+    {
+        var go = Panel(canvas, "Fondo", Color.white);
+        Stretch(go);
+        var g = go.AddComponent<GradientBackground>();
+        g.abajo = FONDO;
+        g.arriba = FlowTheme.Mul(FONDO, 1.7f);   // un poco más claro arriba
+        return go;
+    }
+
+    // Redondea las esquinas de un GameObject que ya tiene Image.
+    static void Redondear(GameObject go, int radio)
+    {
+        var r = go.AddComponent<RoundedImage>();
+        r.radius = radio;
+    }
+
+    // Sombra suave (sensación de elevación).
+    static void SombraSuave(GameObject go, Vector2 offset, float alpha)
+    {
+        var sh = go.AddComponent<Shadow>();
+        sh.effectColor = new Color(0, 0, 0, alpha);
+        sh.effectDistance = offset;
+    }
+
+    // TextAnchor (legacy) -> TextAlignmentOptions (TMP)
+    static TextAlignmentOptions Alinear(TextAnchor a)
+    {
+        switch (a)
+        {
+            case TextAnchor.UpperLeft:    return TextAlignmentOptions.TopLeft;
+            case TextAnchor.UpperCenter:  return TextAlignmentOptions.Top;
+            case TextAnchor.UpperRight:   return TextAlignmentOptions.TopRight;
+            case TextAnchor.MiddleLeft:   return TextAlignmentOptions.Left;
+            case TextAnchor.MiddleRight:  return TextAlignmentOptions.Right;
+            case TextAnchor.LowerLeft:    return TextAlignmentOptions.BottomLeft;
+            case TextAnchor.LowerCenter:  return TextAlignmentOptions.Bottom;
+            case TextAnchor.LowerRight:   return TextAlignmentOptions.BottomRight;
+            default:                      return TextAlignmentOptions.Center;
+        }
     }
 
     static void Stretch(GameObject go)
@@ -249,12 +303,6 @@ public static class MenusBuilder
         rt.anchoredPosition = pos; rt.sizeDelta = size;
     }
 
-    static Font Font()
-    {
-        Font f = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        if (f == null) f = Resources.GetBuiltinResource<Font>("Arial.ttf");
-        return f;
-    }
     static Color Hex(string h) { Color c; ColorUtility.TryParseHtmlString(h, out c); return c; }
 
     static void Guardar(UnityEngine.SceneManagement.Scene scene, string nombre)

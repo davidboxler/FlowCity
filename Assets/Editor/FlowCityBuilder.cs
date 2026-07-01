@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
+using TMPro;
 
 // ============================================================================
 //  FLOWCITY BUILDER (Editor)
@@ -48,11 +49,14 @@ public static class FlowCityBuilder
         // Horizonte: la línea donde el suelo se junta con el cielo (≈48% de la altura).
         const float HORIZONTE = 0.48f;
 
-        // Cielo (de la mitad para arriba)
-        var cielo = Panel(canvasGO.transform, "Cielo", HexC("#5DADE2"));
+        // Cielo (de la mitad para arriba) — gradiente para dar profundidad
+        var cielo = Panel(canvasGO.transform, "Cielo", Color.white);
         Anchor(cielo, new Vector2(0, HORIZONTE), new Vector2(1, 1f));
-        // Suelo/pasto (de la mitad para abajo) — la calle se apoya ACÁ
-        var piso = Panel(canvasGO.transform, "Piso", HexC("#5E6B5A"));
+        var cieloG = cielo.AddComponent<GradientBackground>();
+        cieloG.abajo = FlowTheme.SKY_LOW;   // claro en el horizonte
+        cieloG.arriba = FlowTheme.SKY_TOP;  // más profundo arriba
+        // Suelo (de la mitad para abajo) — la calle se apoya ACÁ
+        var piso = Panel(canvasGO.transform, "Piso", FlowTheme.GROUND);
         Anchor(piso, new Vector2(0, 0), new Vector2(1, HORIZONTE));
 
         // Edificios al FONDO (sobre el horizonte, lejanos: violeta/negro oscuro)
@@ -90,6 +94,7 @@ public static class FlowCityBuilder
         // Panel "GLASS" detrás de los botones (vidrio esmerilado translúcido).
         var glass = Panel(panelJuego.transform, "GlassBotones", new Color(1f, 1f, 1f, 0.10f));
         Anchor01(glass, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0, 82), new Vector2(1340, 210));
+        Redondear(glass, FlowTheme.R_TARJETA);               // vidrio con esquinas suaves
         glass.GetComponent<Image>().raycastTarget = false;   // que no robe clicks
         var glassOl = glass.AddComponent<Outline>();
         glassOl.effectColor = new Color(1f, 1f, 1f, 0.22f);   // borde claro (brillo del vidrio)
@@ -99,13 +104,13 @@ public static class FlowCityBuilder
         glassSh.effectDistance = new Vector2(0, -6);
 
         // Botones de respuesta (izq y der, abajo) — sobre el glass. Creados DESPUÉS para ir encima.
-        Button btnIzq; Text txtIzq;
-        CrearBoton(panelJuego.transform, "BotonIzq", "Opción Izq", "<", new Vector2(0.5f, 0f), new Vector2(-350, 75), HexC("#2980B9"), out btnIzq, out txtIzq);
-        Button btnDer; Text txtDer;
-        CrearBoton(panelJuego.transform, "BotonDer", "Opción Der", ">", new Vector2(0.5f, 0f), new Vector2(350, 75), HexC("#16A085"), out btnDer, out txtDer);
+        Button btnIzq; TMP_Text txtIzq;
+        CrearBoton(panelJuego.transform, "BotonIzq", "Opción Izq", "<", new Vector2(0.5f, 0f), new Vector2(-350, 75), FlowTheme.PRIMARY, out btnIzq, out txtIzq);
+        Button btnDer; TMP_Text txtDer;
+        CrearBoton(panelJuego.transform, "BotonDer", "Opción Der", ">", new Vector2(0.5f, 0f), new Vector2(350, 75), HexC("#14B8A6"), out btnDer, out txtDer);
 
         // HUD de velocidad — POPUP FLOTANTE (claro/grisáceo, con sombra, despegado del borde)
-        Text velTxt; Image velFillImg;
+        TMP_Text velTxt; Image velFillImg;
         PopupVelocidad(panelJuego.transform, out velTxt, out velFillImg);
 
         // Flash de feedback
@@ -119,10 +124,10 @@ public static class FlowCityBuilder
         panelSenal.transform.SetParent(canvasGO.transform, false);
         StretchRT(panelSenal.AddComponent<RectTransform>());
         var psBG = panelSenal.AddComponent<Image>();
-        psBG.color = HexC("#0E1B2A");   // fondo institucional OPACO (tapa la ciudad detrás)
+        psBG.color = FlowTheme.BG0;   // fondo profundo OPACO (tapa la ciudad detrás)
 
         // Banda superior institucional
-        var psBanda = Panel(panelSenal.transform, "Banda", HexC("#2E86C1"));
+        var psBanda = Panel(panelSenal.transform, "Banda", FlowTheme.PRIMARY);
         Anchor(psBanda, new Vector2(0, 0.92f), new Vector2(1, 1f));
         var psInst = Texto(psBanda.transform, "Inst", "INSTITUTO DE FORMACIÓN VIAL", 24, TextAnchor.MiddleCenter);
         psInst.color = Color.white; StretchRT(psInst.GetComponent<RectTransform>());
@@ -134,15 +139,15 @@ public static class FlowCityBuilder
 
         // Título
         var psTitulo = Texto(panelSenal.transform, "Titulo", "MEMORIZÁ LA SEÑAL", 40, TextAnchor.MiddleCenter);
-        psTitulo.color = HexC("#5DADE2");
+        psTitulo.color = FlowTheme.PRIMARYH;
         Anchor01(psTitulo.gameObject, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -130), new Vector2(700, 60));
 
         // Cuenta regresiva (arriba a la derecha: rótulo + número grande)
         var cuentaCap = Texto(panelSenal.transform, "CuentaCap", "TIEMPO", 22, TextAnchor.MiddleCenter);
-        cuentaCap.color = HexC("#8FA3B0");
+        cuentaCap.color = FlowTheme.TXT_MD;
         Anchor01(cuentaCap.gameObject, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-150, -98), new Vector2(220, 30));
         var cuenta = Texto(panelSenal.transform, "Cuenta", "5", 120, TextAnchor.MiddleCenter);
-        cuenta.color = HexC("#F1C40F"); AddOutline(cuenta.gameObject);
+        cuenta.color = FlowTheme.WARN; AddOutline(cuenta.gameObject);
         Anchor01(cuenta.gameObject, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-150, -190), new Vector2(220, 150));
 
         // Señal grande (centro)
@@ -155,14 +160,18 @@ public static class FlowCityBuilder
         var obstaculoSenal = zonaSenalGO.AddComponent<ObstacleView>();
 
         // Pregunta (banda inferior)
-        var bandaPreg = Panel(panelSenal.transform, "BandaPregunta", new Color(0, 0, 0, 0.30f));
-        Anchor01(bandaPreg, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0, 155), new Vector2(1400, 150));
+        var bandaPreg = Panel(panelSenal.transform, "BandaPregunta", FlowTheme.BG1);
+        Anchor01(bandaPreg, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0, 155), new Vector2(1320, 150));
+        Redondear(bandaPreg, FlowTheme.R_TARJETA);   // tarjeta de la pregunta
         var enunciadoSenal = Texto(bandaPreg.transform, "PreguntaSenal", "Pregunta", 44, TextAnchor.MiddleCenter);
-        enunciadoSenal.color = Color.white; StretchRT(enunciadoSenal.GetComponent<RectTransform>());
+        enunciadoSenal.color = Color.white;
+        var enRT = enunciadoSenal.GetComponent<RectTransform>();
+        enRT.anchorMin = Vector2.zero; enRT.anchorMax = Vector2.one;
+        enRT.offsetMin = new Vector2(40, 0); enRT.offsetMax = new Vector2(-40, 0);
 
         // Ayuda
         var psAyuda = Texto(panelSenal.transform, "Ayuda", "Respondé en la ciudad cuando la señal desaparezca", 24, TextAnchor.MiddleCenter);
-        psAyuda.color = HexC("#8FA3B0");
+        psAyuda.color = FlowTheme.TXT_MD;
         Anchor01(psAyuda.gameObject, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0, 70), new Vector2(1100, 40));
 
         // ---------- PANEL FINAL ----------
@@ -170,11 +179,11 @@ public static class FlowCityBuilder
         panelFinal.transform.SetParent(canvasGO.transform, false);
         StretchRT(panelFinal.AddComponent<RectTransform>());
         var pfBG = panelFinal.AddComponent<Image>();
-        pfBG.color = new Color(0.08f, 0.1f, 0.14f, 0.94f);
+        pfBG.color = new Color(FlowTheme.BG0.r, FlowTheme.BG0.g, FlowTheme.BG0.b, 0.96f);
         var resultado = Texto(panelFinal.transform, "Resultado", "Resultado", 50, TextAnchor.MiddleCenter);
         Anchor01(resultado.gameObject, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 80), new Vector2(1100, 400));
         resultado.color = Color.white;
-        Button btnReiniciar; Text txtReiniciar;
+        Button btnReiniciar; TMP_Text txtReiniciar;
         CrearBoton(panelFinal.transform, "BotonReiniciar", "Volver a empezar", "", new Vector2(0.5f, 0f), new Vector2(0, 220), HexC("#2980B9"), out btnReiniciar, out txtReiniciar);
 
         // ---------- GAME MANAGER ----------
@@ -361,26 +370,48 @@ public static class FlowCityBuilder
         return go;
     }
 
-    static Text Texto(Transform parent, string nombre, string contenido, int tam, TextAnchor anchor)
+    static TextMeshProUGUI Texto(Transform parent, string nombre, string contenido, int tam, TextAnchor anchor)
     {
         var go = new GameObject(nombre);
         go.transform.SetParent(parent, false);
         go.AddComponent<RectTransform>();
-        var t = go.AddComponent<Text>();
+        var t = go.AddComponent<TextMeshProUGUI>();
         t.text = contenido;
-        t.font = Font();
+        if (TMP_Settings.defaultFontAsset != null) t.font = TMP_Settings.defaultFontAsset;
         t.fontSize = tam;
-        t.fontStyle = FontStyle.Bold;
-        t.alignment = anchor;
+        t.fontStyle = FontStyles.Bold;
+        t.alignment = Alinear(anchor);
         t.color = HexC("#1C2833");
-        t.horizontalOverflow = HorizontalWrapMode.Wrap;
-        t.verticalOverflow = VerticalWrapMode.Overflow;
         return t;
+    }
+
+    // TextAnchor (legacy) -> TextAlignmentOptions (TMP)
+    static TextAlignmentOptions Alinear(TextAnchor a)
+    {
+        switch (a)
+        {
+            case TextAnchor.UpperLeft:    return TextAlignmentOptions.TopLeft;
+            case TextAnchor.UpperCenter:  return TextAlignmentOptions.Top;
+            case TextAnchor.UpperRight:   return TextAlignmentOptions.TopRight;
+            case TextAnchor.MiddleLeft:   return TextAlignmentOptions.Left;
+            case TextAnchor.MiddleRight:  return TextAlignmentOptions.Right;
+            case TextAnchor.LowerLeft:    return TextAlignmentOptions.BottomLeft;
+            case TextAnchor.LowerCenter:  return TextAlignmentOptions.Bottom;
+            case TextAnchor.LowerRight:   return TextAlignmentOptions.BottomRight;
+            default:                      return TextAlignmentOptions.Center;
+        }
+    }
+
+    // Redondea las esquinas de un GameObject que ya tiene Image.
+    static void Redondear(GameObject go, int radio)
+    {
+        var r = go.AddComponent<RoundedImage>();
+        r.radius = radio;
     }
 
     // Botón mejorado: más grande, con sombra (efecto flotante), bisel inferior,
     // realce al pasar/presionar y una flecha lateral ("<" o ">").
-    static void CrearBoton(Transform parent, string nombre, string label, string flecha, Vector2 anchor, Vector2 pos, Color color, out Button btn, out Text txt)
+    static void CrearBoton(Transform parent, string nombre, string label, string flecha, Vector2 anchor, Vector2 pos, Color color, out Button btn, out TMP_Text txt)
     {
         var go = new GameObject(nombre);
         go.transform.SetParent(parent, false);
@@ -391,28 +422,19 @@ public static class FlowCityBuilder
         rt.sizeDelta = new Vector2(580, 150);
         var img = go.AddComponent<Image>();
         img.color = color;
+        Redondear(go, FlowTheme.R_BOTON);                 // esquinas redondeadas
 
         // sombra: hace que el botón "flote" sobre la escena
         var sh = go.AddComponent<Shadow>();
         sh.effectColor = new Color(0, 0, 0, 0.45f);
         sh.effectDistance = new Vector2(0, -7);
-        // realce sutil del borde superior
-        var ol = go.AddComponent<Outline>();
-        ol.effectColor = new Color(1, 1, 1, 0.16f);
-        ol.effectDistance = new Vector2(2, 2);
 
         btn = go.AddComponent<Button>();
         var colors = btn.colors;
-        colors.highlightedColor = new Color(Mathf.Min(1,color.r*1.18f), Mathf.Min(1,color.g*1.18f), Mathf.Min(1,color.b*1.18f), 1f);
-        colors.pressedColor = new Color(color.r*0.82f, color.g*0.82f, color.b*0.82f, 1f);
+        colors.highlightedColor = FlowTheme.Mul(color, 1.15f);
+        colors.pressedColor = FlowTheme.Mul(color, 0.82f);
         colors.fadeDuration = 0.08f;
         btn.colors = colors;
-
-        // bisel inferior (franja más oscura para dar volumen)
-        var bisel = Panel(go.transform, "Bisel", new Color(0, 0, 0, 0.20f));
-        var brt = bisel.GetComponent<RectTransform>();
-        brt.anchorMin = new Vector2(0, 0); brt.anchorMax = new Vector2(1, 0); brt.pivot = new Vector2(0.5f, 0f);
-        brt.offsetMin = new Vector2(0, 0); brt.offsetMax = new Vector2(0, 16);
 
         // flecha lateral (lado externo según el botón)
         if (!string.IsNullOrEmpty(flecha))
@@ -426,15 +448,14 @@ public static class FlowCityBuilder
         // texto principal (centrado, con margen lateral para no pisar la flecha)
         var txtGO = new GameObject("Texto");
         txtGO.transform.SetParent(go.transform, false);
-        txt = txtGO.AddComponent<Text>();
-        txt.text = label;
-        txt.font = Font();
-        txt.fontSize = 40;
-        txt.fontStyle = FontStyle.Bold;
-        txt.alignment = TextAnchor.MiddleCenter;
-        txt.color = Color.white;
-        txt.horizontalOverflow = HorizontalWrapMode.Wrap;
-        txt.verticalOverflow = VerticalWrapMode.Overflow;
+        var tmp = txtGO.AddComponent<TextMeshProUGUI>();
+        tmp.text = label;
+        if (TMP_Settings.defaultFontAsset != null) tmp.font = TMP_Settings.defaultFontAsset;
+        tmp.fontSize = 40;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.color = Color.white;
+        txt = tmp;
         var trt = txtGO.GetComponent<RectTransform>();
         trt.anchorMin = new Vector2(0, 0); trt.anchorMax = new Vector2(1, 1);
         trt.offsetMin = new Vector2(85, 14); trt.offsetMax = new Vector2(-85, -6);
@@ -442,10 +463,11 @@ public static class FlowCityBuilder
 
     // Popup flotante de velocidad: tarjeta clara/grisácea con sombra, despegada del
     // borde (arriba a la derecha), número grande y barra de progreso.
-    static void PopupVelocidad(Transform parent, out Text velTxt, out Image velFillImg)
+    static void PopupVelocidad(Transform parent, out TMP_Text velTxt, out Image velFillImg)
     {
-        var pop = Panel(parent, "VelocidadPopup", new Color(0.95f, 0.96f, 0.96f, 0.94f));
+        var pop = Panel(parent, "VelocidadPopup", new Color(0.96f, 0.97f, 0.98f, 0.95f));
         Anchor01(pop, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(185, 120), new Vector2(300, 132));
+        Redondear(pop, FlowTheme.R_POPUP);
         var sh = pop.AddComponent<Shadow>();
         sh.effectColor = new Color(0, 0, 0, 0.38f);
         sh.effectDistance = new Vector2(5, -5);
@@ -463,7 +485,8 @@ public static class FlowCityBuilder
 
         var velBG = Panel(pop.transform, "VelTrackBG", HexC("#D5DBDB"));
         Anchor01(velBG, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0, 18), new Vector2(250, 16));
-        var velFill = Panel(velBG.transform, "VelFill", HexC("#2E86C1"));
+        Redondear(velBG, 8);
+        var velFill = Panel(velBG.transform, "VelFill", FlowTheme.PRIMARY);
         velFillImg = velFill.GetComponent<Image>();
         velFillImg.type = Image.Type.Filled;
         velFillImg.fillMethod = Image.FillMethod.Horizontal;
@@ -500,13 +523,6 @@ public static class FlowCityBuilder
         if (rt == null) return;
         rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
         rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
-    }
-
-    static Font Font()
-    {
-        Font f = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        if (f == null) f = Resources.GetBuiltinResource<Font>("Arial.ttf");
-        return f;
     }
 
     static Color HexC(string hex) { Color c; ColorUtility.TryParseHtmlString(hex, out c); return c; }

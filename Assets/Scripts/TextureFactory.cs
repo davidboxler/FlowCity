@@ -182,6 +182,55 @@ public static class TextureFactory
         return Guardar(key, tex);
     }
 
+    // --- Rectángulo de esquinas redondeadas (blanco, para tintar con Image.color) ---
+    //     Devuelve un sprite con BORDE 9-slice = radio, así se estira sin deformar las
+    //     esquinas. Usar con Image.type = Sliced. Antialias de 1px en el contorno.
+    public static Sprite RoundedRect(int radius = 18)
+    {
+        if (radius < 1) radius = 1;
+        string key = "round_" + radius;
+        if (cache.ContainsKey(key)) return cache[key];
+
+        int size = radius * 2 + 6;            // textura chica; el centro se estira
+        Texture2D tex = NuevaTextura(size, size);
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float px = x + 0.5f, py = y + 0.5f;
+                float cx = Mathf.Clamp(px, radius, size - radius);
+                float cy = Mathf.Clamp(py, radius, size - radius);
+                float d = Vector2.Distance(new Vector2(px, py), new Vector2(cx, cy));
+                float a = Mathf.Clamp01(radius - d + 0.5f);   // 1 dentro, 0 fuera, AA al borde
+                tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+            }
+        tex.Apply();
+
+        Sprite s = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f),
+            100f, 0, SpriteMeshType.FullRect, new Vector4(radius, radius, radius, radius));
+        cache[key] = s;
+        return s;
+    }
+
+    // --- Gradiente vertical (abajo -> arriba). Para cielos y fondos con profundidad. ---
+    public static Sprite GradienteVertical(Color abajo, Color arriba)
+    {
+        string key = "grad_" + abajo + "_" + arriba;
+        if (cache.ContainsKey(key)) return cache[key];
+
+        int h = 256;
+        Texture2D tex = NuevaTextura(2, h);
+        for (int y = 0; y < h; y++)
+        {
+            Color c = Color.Lerp(abajo, arriba, (float)y / (h - 1));
+            tex.SetPixel(0, y, c);
+            tex.SetPixel(1, y, c);
+        }
+        tex.Apply();
+        Sprite s = Sprite.Create(tex, new Rect(0, 0, 2, h), new Vector2(0.5f, 0.5f));
+        cache[key] = s;
+        return s;
+    }
+
     // ---------- helpers ----------
     private static Texture2D NuevaTextura(int w, int h)
     {

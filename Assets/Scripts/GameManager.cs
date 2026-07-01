@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 // ============================================================================
 //  GAME MANAGER — FlowCity (examen de manejo por reacción)
@@ -24,13 +25,13 @@ public class GameManager : MonoBehaviour
     [Header("Fase SEÑAL (pantalla completa)")]
     [SerializeField] private GameObject panelSenal;
     [SerializeField] private ObstacleView obstaculoSenal;
-    [SerializeField] private Text textoPreguntaSenal;
-    [SerializeField] private Text textoCuenta;
-    [SerializeField] private Text textoProgreso;
+    [SerializeField] private TMP_Text textoPreguntaSenal;
+    [SerializeField] private TMP_Text textoCuenta;
+    [SerializeField] private TMP_Text textoProgreso;
 
     [Header("Fase RESPUESTA")]
-    [SerializeField] private Text textoOpcionIzq;
-    [SerializeField] private Text textoOpcionDer;
+    [SerializeField] private TMP_Text textoOpcionIzq;
+    [SerializeField] private TMP_Text textoOpcionDer;
     [SerializeField] private Button botonIzq;
     [SerializeField] private Button botonDer;
     [SerializeField] private Image barraTiempo;
@@ -40,13 +41,13 @@ public class GameManager : MonoBehaviour
     [SerializeField] private GameObject vehiculoMoto;
 
     [Header("HUD de velocidad")]
-    [SerializeField] private Text textoVelocidad;
+    [SerializeField] private TMP_Text textoVelocidad;
     [SerializeField] private Image velocidadFill;
 
     [Header("Pantallas")]
     [SerializeField] private GameObject panelJuego;
     [SerializeField] private GameObject panelFinal;
-    [SerializeField] private Text textoResultado;
+    [SerializeField] private TMP_Text textoResultado;
     [SerializeField] private Button botonReiniciar;
 
     [Header("Feedback")]
